@@ -9,6 +9,10 @@ const discountInput = document.querySelector("#discount");
 const vatInput = document.querySelector("#vat");
 const currencyInput = document.querySelector("#currency");
 const formatter = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
+const draftKey = "smeta-5-minutes.draft.v1";
+const draftFields = ["sender", "recipient", "estimate-number", "estimate-date", "discount", "vat", "currency"];
+const itemFields = ["item-name", "item-quantity", "item-unit", "item-price"];
+let draftReady = false;
 
 // Local calendar date avoids a date shift caused by converting to UTC.
 const today = new Date();
@@ -47,6 +51,7 @@ function recalculate() {
   document.querySelector("#vat-row").hidden = vat === 0;
   totalOutput.textContent = Number.isFinite(afterDiscount + vat) ? money(afterDiscount + vat) : "Слишком большое значение";
   emptyState.hidden = items.rows.length > 0;
+  if (draftReady) saveDraft();
 }
 
 function addItem(focus = true) {
@@ -78,7 +83,128 @@ items.addEventListener("keydown", (event) => {
   }
 });
 
-addItem(false);
+restoreDraft();
+draftReady = true;
+
+document.querySelector(".details-grid").addEventListener("input", saveDraft);
+document.querySelector(".details-grid").addEventListener("change", saveDraft);
+
+function saveDraft() {
+  const draft = {
+    version: 1,
+    fields: Object.fromEntries(draftFields.map((id) => [id, document.getElementById(id).value])),
+    items: Array.from(items.rows, (row) => Object.fromEntries(itemFields.map((name) => [name, row.querySelector(`.${name}`).value])))
+  };
+  try {
+    localStorage.setItem(draftKey, JSON.stringify(draft));
+    document.querySelector("#draft-status").textContent = "Черновик сохранён в этом браузере.";
+  } catch {
+    document.querySelector("#draft-status").textContent = "Не удалось сохранить черновик. Хранилище браузера недоступно или заполнено; после обновления изменения могут потеряться.";
+  }
+  // Do not leave an outdated manual-copy text visible after edits.
+  document.querySelector("#manual-copy").hidden = true;
+  document.querySelector("#copy-status").textContent = "";
+}
+
+function restoreDraft() {
+  try {
+    const saved = localStorage.getItem(draftKey);
+    if (!saved) { addItem(false); return; }
+    const draft = JSON.parse(saved);
+    if (draft.version !== 1 || !draft.fields || !Array.isArray(draft.items)
+      || !draftFields.every((id) => typeof draft.fields[id] === "string")
+      || !["₸", "₽", "$", "€"].includes(draft.fields.currency)
+      || !draft.items.every((row) => row && itemFields.every((name) => typeof row[name] === "string"))) {
+      throw new Error("Invalid draft");
+    }
+    draftFields.forEach((id) => { document.getElementById(id).value = draft.fields[id]; });
+    items.replaceChildren();
+    for (const savedRow of draft.items) {
+      const row = template.content.firstElementChild.cloneNode(true);
+      itemFields.forEach((name) => { row.querySelector(`.${name}`).value = savedRow[name]; });
+      items.append(row);
+    }
+    recalculate();
+    document.querySelector("#draft-status").textContent = "Черновик восстановлен.";
+  } catch {
+    addItem(false);
+    document.querySelector("#draft-status").textContent = "Не удалось прочитать черновик. Открыта новая смета; сохранение может быть недоступно.";
+  }
+}
+
+document.querySelector("#clear-draft").addEventListener("click", () => {
+  if (!window.confirm("Удалить сохранённый черновик и очистить смету?")) return;
+  try {
+    localStorage.removeItem(draftKey);
+  } catch {
+    document.querySelector("#draft-status").textContent = "Не удалось удалить черновик из хранилища. Смета не очищена.";
+    return;
+  }
+  draftReady = false;
+  draftFields.forEach((id) => { document.getElementById(id).value = ""; });
+  discountInput.value = "0";
+  vatInput.value = "0";
+  currencyInput.value = "₸";
+  items.replaceChildren();
+  recalculate();
+  draftReady = true;
+  document.querySelector("#print-estimate").replaceChildren();
+  document.querySelector("#manual-copy").hidden = true;
+  document.querySelector("#whatsapp-text").value = "";
+  document.querySelector("#copy-status").textContent = "";
+  document.querySelector("#draft-status").textContent = "Черновик удалён. Новые изменения будут сохраняться автоматически.";
+  document.querySelector("#sender").focus();
+});
+
+function whatsappText() {
+  const value = (id) => document.getElementById(id).value.trim() || "—";
+  const date = document.querySelector("#estimate-date").value;
+  const lines = [
+    `Смета № ${value("estimate-number")} от ${date ? date.split("-").reverse().join(".") : "—"}`,
+    `От кого: ${value("sender")}`,
+    `Для кого: ${value("recipient")}`, "", "Позиции:"
+  ];
+  Array.from(items.rows).forEach((row, index) => {
+    const name = row.querySelector(".item-name").value.trim() || "Без названия";
+    const unit = row.querySelector(".item-unit").value.trim();
+    const quantity = formatter.format(numericValue(row.querySelector(".item-quantity")));
+    const price = formatter.format(numericValue(row.querySelector(".item-price")));
+    lines.push(`${index + 1}. ${name}`, `   ${quantity}${unit ? ` ${unit}` : ""} × ${price} ${currencyInput.value} = ${row.querySelector(".item-total").textContent}`);
+  });
+  if (!items.rows.length) lines.push("Нет позиций");
+  lines.push("", `Сумма позиций: ${document.querySelector("#subtotal").textContent}`);
+  if (!document.querySelector("#discount-row").hidden) lines.push(`Скидка (${formatter.format(Math.min(100, numericValue(discountInput)))}%): ${document.querySelector("#discount-amount").textContent}`);
+  lines.push(`Сумма после скидки: ${document.querySelector("#after-discount").textContent}`);
+  if (!document.querySelector("#vat-row").hidden) lines.push(`НДС (${formatter.format(Math.min(100, numericValue(vatInput)))}%): ${document.querySelector("#vat-amount").textContent}`);
+  lines.push(`Итого к оплате: ${totalOutput.textContent}`);
+  return lines.join("\n");
+}
+
+function selectCopyText() {
+  const text = document.querySelector("#whatsapp-text");
+  text.focus();
+  text.select();
+  text.setSelectionRange(0, text.value.length);
+}
+
+document.querySelector("#copy-whatsapp").addEventListener("click", async () => {
+  const text = whatsappText();
+  try {
+    await navigator.clipboard.writeText(text);
+    document.querySelector("#manual-copy").hidden = true;
+    document.querySelector("#copy-status").textContent = "Смета скопирована. Вставьте её в нужный чат WhatsApp.";
+  } catch {
+    document.querySelector("#whatsapp-text").value = text;
+    document.querySelector("#manual-copy").hidden = false;
+    document.querySelector("#copy-status").textContent = "Автоматическое копирование недоступно. Скопируйте текст ниже вручную.";
+    selectCopyText();
+  }
+});
+document.querySelector("#select-copy-text").addEventListener("click", selectCopyText);
+document.querySelector("#close-copy").addEventListener("click", () => {
+  document.querySelector("#manual-copy").hidden = true;
+  document.querySelector("#copy-whatsapp").focus();
+});
 
 // Build a text-only snapshot so printing includes full values, not input boxes.
 function preparePrint() {

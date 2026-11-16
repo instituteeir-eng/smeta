@@ -50,7 +50,21 @@
       <div class="total-bar"><p class="total-label">Итого к оплате</p><output id="grand-total" aria-live="polite" aria-atomic="true">0 ₸</output></div>
     </section>
     <div class="print-actions"><button type="button" id="save-pdf" class="add-button">Сохранить PDF</button><p>В окне печати выберите «Сохранить как PDF».</p></div>
-    <footer>Ваши данные остаются в браузере. При обновлении страницы смета очистится.</footer>
+    <div class="draft-actions">
+      <button type="button" id="copy-whatsapp" class="add-button">Скопировать для WhatsApp</button>
+      <button type="button" id="clear-draft" class="add-button">Очистить черновик</button>
+    </div>
+    <p id="draft-status" class="action-status" role="status">Черновик сохраняется автоматически в этом браузере.</p>
+    <p id="copy-status" class="action-status" role="status"></p>
+    <section id="manual-copy" class="panel manual-copy" hidden aria-labelledby="manual-copy-heading">
+      <h2 id="manual-copy-heading">Скопируйте текст вручную</h2>
+      <p>Текст выделен. Нажмите Ctrl+C (⌘C на Mac) или удерживайте текст на телефоне и выберите «Копировать».</p>
+      <label for="whatsapp-text">Текст сметы</label>
+      <textarea id="whatsapp-text" readonly rows="12"></textarea>
+      <button type="button" id="select-copy-text" class="add-button">Выделить весь текст</button>
+      <button type="button" id="close-copy" class="add-button">Закрыть</button>
+    </section>
+    <footer>Ваши данные остаются в этом браузере. Черновик восстанавливается после обновления страницы.</footer>
   </main>
   <article id="print-estimate" aria-label="Смета для печати"></article>
 

@@ -2,6 +2,13 @@
 #print-estimate { display: none; }
 .print-actions { text-align: center; margin: 24px 0; }
 .print-actions p { color: #718477; font-size: 12px; }
+.draft-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.action-status { text-align: center; font-size: 13px; color: #50665b; line-height: 1.5; }
+.action-status:empty { display: none; }
+.manual-copy { padding: 20px; }
+.manual-copy p { font-size: 14px; line-height: 1.5; }
+.manual-copy textarea { display: block; width: 100%; min-height: 240px; padding: 12px; margin: 10px 0 16px; font: inherit; font-size: 16px; border: 1px solid #c7ded1; border-radius: 9px; resize: vertical; }
+.manual-copy button { margin: 4px 0; }
 * { box-sizing: border-box; }
 body { margin: 0; }
 button, input, select { font: inherit; }
