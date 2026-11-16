@@ -1,4 +1,7 @@
 :root { color-scheme: light; font-family: "Segoe UI", Arial, sans-serif; color: #203730; background: #f3f6f4; font-synthesis: none; }
+#print-estimate { display: none; }
+.print-actions { text-align: center; margin: 24px 0; }
+.print-actions p { color: #718477; font-size: 12px; }
 * { box-sizing: border-box; }
 body { margin: 0; }
 button, input, select { font: inherit; }
@@ -90,4 +93,31 @@ footer { text-align: center; font-size: 12px; color: #76877b; padding: 3px 12px 
   .calculation-settings label:last-of-type { grid-column: 1 / -1; }
   .calculation-settings input, .calculation-settings select { font-size: 16px; }
   .summary { padding: 20px 18px; }
+}
+
+@page { size: A4 portrait; margin: 15mm; }
+@media print {
+  :root, body { background: white; color: black; }
+  .workspace, button, input, select, textarea { display: none !important; }
+  #print-estimate { display: block; font-size: 10pt; line-height: 1.4; overflow-wrap: anywhere; }
+  #print-estimate h1 { font-size: 18pt; letter-spacing: normal; margin: 0 0 6mm; }
+  #print-estimate p { white-space: pre-wrap; margin: 0 0 3mm; }
+  #print-estimate table { display: table; width: 100%; margin-top: 6mm; border-collapse: collapse; table-layout: fixed; }
+  #print-estimate thead { display: table-header-group; }
+  #print-estimate tbody { display: table-row-group; }
+  #print-estimate tr { display: table-row; position: static; background: white; break-inside: avoid; }
+  #print-estimate th, #print-estimate td { display: table-cell; padding: 2mm; border: 1px solid #666; font-size: 10pt; color: black; background: white; vertical-align: top; white-space: pre-wrap; }
+  #print-estimate th:first-child { width: 38%; }
+  #print-estimate th:nth-child(2) { width: 13%; }
+  #print-estimate th:nth-child(3) { width: 11%; }
+  #print-estimate th:nth-child(4), #print-estimate th:nth-child(5) { width: 19%; }
+  #print-estimate label { color: black; font-size: inherit; font-weight: normal; }
+  #print-estimate .sum-cell { text-align: right; }
+  #print-estimate .print-totals { break-inside: avoid; margin-top: 5mm; }
+  #print-estimate .summary { padding: 0; border: 0; }
+  #print-estimate .summary-row { margin-bottom: 2mm; font-size: 10pt; }
+  #print-estimate .total-bar { padding: 3mm 0; margin-top: 3mm; border-top: 1px solid #666; background: white; flex-wrap: nowrap; }
+  #print-estimate .total-label, #print-estimate .total-bar output { font-size: 13pt; font-weight: bold; }
+  #print-estimate .total-bar output { text-align: right; overflow-wrap: anywhere; min-width: 0; }
+  #print-estimate .print-signature { margin-top: 12mm; break-inside: avoid; }
 }

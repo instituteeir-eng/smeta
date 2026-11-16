@@ -49,8 +49,10 @@
       </div>
       <div class="total-bar"><p class="total-label">Итого к оплате</p><output id="grand-total" aria-live="polite" aria-atomic="true">0 ₸</output></div>
     </section>
+    <div class="print-actions"><button type="button" id="save-pdf" class="add-button">Сохранить PDF</button><p>В окне печати выберите «Сохранить как PDF».</p></div>
     <footer>Ваши данные остаются в браузере. При обновлении страницы смета очистится.</footer>
   </main>
+  <article id="print-estimate" aria-label="Смета для печати"></article>
 
   <template id="item-template">
     <tr>

@@ -79,3 +79,49 @@ items.addEventListener("keydown", (event) => {
 });
 
 addItem(false);
+
+// Build a text-only snapshot so printing includes full values, not input boxes.
+function preparePrint() {
+  const printView = document.querySelector("#print-estimate");
+  printView.replaceChildren();
+  const heading = document.createElement("h1");
+  const number = document.querySelector("#estimate-number").value.trim() || "—";
+  const date = document.querySelector("#estimate-date").value;
+  heading.textContent = `Смета № ${number} от ${date ? date.split("-").reverse().join(".") : "—"}`;
+  printView.append(heading);
+  for (const [label, selector] of [["От кого", "#sender"], ["Для кого", "#recipient"]]) {
+    const paragraph = document.createElement("p");
+    paragraph.textContent = `${label}: ${document.querySelector(selector).value.trim() || "—"}`;
+    printView.append(paragraph);
+  }
+
+  const table = document.querySelector(".table-wrap table").cloneNode(true);
+  table.querySelectorAll("input").forEach((input) => {
+    const text = document.createElement("span");
+    text.textContent = input.value || (input.type === "number" ? "0" : "—");
+    input.replaceWith(text);
+  });
+  table.querySelectorAll(".mobile-label, .remove-cell, th:last-child, caption").forEach((element) => element.remove());
+  printView.append(table);
+
+  const totals = document.createElement("div");
+  totals.className = "print-totals";
+  totals.append(document.querySelector(".summary").cloneNode(true), document.querySelector(".total-bar").cloneNode(true));
+  printView.append(totals);
+  const signature = document.createElement("p");
+  signature.className = "print-signature";
+  signature.textContent = "Подпись: __________________________";
+  printView.append(signature);
+  // Avoid duplicate IDs and live announcements from the print-only snapshot.
+  printView.querySelectorAll("[id], [aria-live]").forEach((element) => {
+    element.removeAttribute("id");
+    element.removeAttribute("aria-live");
+  });
+}
+
+document.querySelector("#save-pdf").addEventListener("click", () => {
+  preparePrint();
+  window.print();
+});
+// Also refresh the snapshot when printing with the browser menu or Ctrl+P.
+window.addEventListener("beforeprint", preparePrint);
