@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Смета за 5 минут</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <main class="workspace">
+    <header class="page-header">
+      <div class="brand-mark" aria-hidden="true">₸</div>
+      <div><p class="eyebrow">ПРОСТО. БЫСТРО. ПО ДЕЛУ.</p><h1>Смета за 5 минут</h1><p class="subtitle">Добавьте услуги — мы посчитаем стоимость.</p></div>
+    </header>
+
+    <section class="panel details" aria-labelledby="details-heading">
+      <div class="section-heading"><span class="step">01</span><h2 id="details-heading">Детали сметы</h2></div>
+      <div class="details-grid">
+        <label>От кого<input type="text" id="sender" placeholder="Ваше имя или компания" autocomplete="organization"></label>
+        <label>Для кого<input type="text" id="recipient" placeholder="Имя или компания клиента"></label>
+        <label>Номер сметы<input type="text" id="estimate-number" value="СМ-001"></label>
+        <label>Дата<input type="date" id="estimate-date"></label>
+      </div>
+    </section>
+
+    <section class="panel services" aria-labelledby="services-heading">
+      <div class="section-heading"><span class="step">02</span><h2 id="services-heading">Услуги и стоимость</h2><span class="currency">Тенге · ₸</span></div>
+      <div class="table-wrap">
+        <table>
+          <caption class="visually-hidden">Позиции сметы. Суммы рассчитываются автоматически.</caption>
+          <thead><tr><th scope="col">Название услуги</th><th scope="col">Количество</th><th scope="col">Ед. изм.</th><th scope="col">Цена, ₸</th><th scope="col">Сумма, ₸</th><th scope="col"><span class="visually-hidden">Удаление</span></th></tr></thead>
+          <tbody id="items"></tbody>
+        </table>
+      </div>
+      <p id="empty-state" hidden>Пока нет позиций. Добавьте первую услугу.</p>
+      <div class="add-area"><button type="button" id="add-item" class="add-button">+ Добавить позицию</button><span class="keyboard-hint">Enter в поле — новая позиция</span></div>
+      <div class="total-bar"><div><p class="total-label">Общий итог</p><p class="total-note">Стоимость всех позиций</p></div><output id="grand-total" aria-live="polite" aria-atomic="true">0 ₸</output></div>
+    </section>
+    <footer>Ваши данные остаются в браузере. При обновлении страницы смета очистится.</footer>
+  </main>
+
+  <template id="item-template">
+    <tr>
+      <td class="name-cell"><label><span class="mobile-label">Название услуги</span><input class="item-name" type="text" placeholder="Например, разработка дизайна" aria-label="Название услуги"></label></td>
+      <td><label><span class="mobile-label">Количество</span><input class="item-quantity" type="number" min="0" step="any" inputmode="decimal" value="1" aria-label="Количество"></label></td>
+      <td><label><span class="mobile-label">Ед. изм.</span><input class="item-unit" type="text" value="шт." placeholder="шт., ч, м²" aria-label="Единица измерения"></label></td>
+      <td><label><span class="mobile-label">Цена, ₸</span><input class="item-price" type="number" min="0" step="any" inputmode="decimal" placeholder="0" aria-label="Цена в тенге"></label></td>
+      <td class="sum-cell"><span class="mobile-label">Сумма, ₸</span><output class="item-total">0</output></td>
+      <td class="remove-cell"><button type="button" class="remove-button" aria-label="Удалить позицию" title="Удалить позицию"><span aria-hidden="true">×</span></button></td>
+    </tr>
+  </template>
+</body>
+</html>
