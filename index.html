@@ -25,17 +25,29 @@
     </section>
 
     <section class="panel services" aria-labelledby="services-heading">
-      <div class="section-heading"><span class="step">02</span><h2 id="services-heading">Услуги и стоимость</h2><span class="currency">Тенге · ₸</span></div>
+      <div class="section-heading"><span class="step">02</span><h2 id="services-heading">Услуги и стоимость</h2><span class="currency"><span data-currency>₸</span></span></div>
       <div class="table-wrap">
         <table>
           <caption class="visually-hidden">Позиции сметы. Суммы рассчитываются автоматически.</caption>
-          <thead><tr><th scope="col">Название услуги</th><th scope="col">Количество</th><th scope="col">Ед. изм.</th><th scope="col">Цена, ₸</th><th scope="col">Сумма, ₸</th><th scope="col"><span class="visually-hidden">Удаление</span></th></tr></thead>
+          <thead><tr><th scope="col">Название услуги</th><th scope="col">Количество</th><th scope="col">Ед. изм.</th><th scope="col">Цена, <span data-currency>₸</span></th><th scope="col">Сумма, <span data-currency>₸</span></th><th scope="col"><span class="visually-hidden">Удаление</span></th></tr></thead>
           <tbody id="items"></tbody>
         </table>
       </div>
       <p id="empty-state" hidden>Пока нет позиций. Добавьте первую услугу.</p>
       <div class="add-area"><button type="button" id="add-item" class="add-button">+ Добавить позицию</button><span class="keyboard-hint">Enter в поле — новая позиция</span></div>
-      <div class="total-bar"><div><p class="total-label">Общий итог</p><p class="total-note">Стоимость всех позиций</p></div><output id="grand-total" aria-live="polite" aria-atomic="true">0 ₸</output></div>
+      <div class="calculation-settings">
+        <label>Скидка, %<input id="discount" type="number" min="0" max="100" step="any" inputmode="decimal" value="0"></label>
+        <label>НДС, %<input id="vat" type="number" min="0" max="100" step="any" inputmode="decimal" value="0"></label>
+        <label>Валюта<select id="currency"><option value="₸">₸ — Тенге</option><option value="₽">₽ — Рубль</option><option value="$">$ — Доллар</option><option value="€">€ — Евро</option></select></label>
+        <p class="settings-note">Валюта меняет только обозначение, без пересчёта по курсу.</p>
+      </div>
+      <div class="summary">
+        <div class="summary-row"><span>Сумма позиций</span><output id="subtotal">0 ₸</output></div>
+        <div class="summary-row" id="discount-row" hidden><span>Скидка</span><output id="discount-amount">0 ₸</output></div>
+        <div class="summary-row"><span>Сумма после скидки</span><output id="after-discount">0 ₸</output></div>
+        <div class="summary-row" id="vat-row" hidden><span>НДС</span><output id="vat-amount">0 ₸</output></div>
+      </div>
+      <div class="total-bar"><p class="total-label">Итого к оплате</p><output id="grand-total" aria-live="polite" aria-atomic="true">0 ₸</output></div>
     </section>
     <footer>Ваши данные остаются в браузере. При обновлении страницы смета очистится.</footer>
   </main>
@@ -45,8 +57,8 @@
       <td class="name-cell"><label><span class="mobile-label">Название услуги</span><input class="item-name" type="text" placeholder="Например, разработка дизайна" aria-label="Название услуги"></label></td>
       <td><label><span class="mobile-label">Количество</span><input class="item-quantity" type="number" min="0" step="any" inputmode="decimal" value="1" aria-label="Количество"></label></td>
       <td><label><span class="mobile-label">Ед. изм.</span><input class="item-unit" type="text" value="шт." placeholder="шт., ч, м²" aria-label="Единица измерения"></label></td>
-      <td><label><span class="mobile-label">Цена, ₸</span><input class="item-price" type="number" min="0" step="any" inputmode="decimal" placeholder="0" aria-label="Цена в тенге"></label></td>
-      <td class="sum-cell"><span class="mobile-label">Сумма, ₸</span><output class="item-total">0</output></td>
+      <td><label><span class="mobile-label">Цена, <span data-currency>₸</span></span><input class="item-price" type="number" min="0" step="any" inputmode="decimal" placeholder="0" aria-label="Цена в тенге"></label></td>
+      <td class="sum-cell"><span class="mobile-label">Сумма, <span data-currency>₸</span></span><output class="item-total">0</output></td>
       <td class="remove-cell"><button type="button" class="remove-button" aria-label="Удалить позицию" title="Удалить позицию"><span aria-hidden="true">×</span></button></td>
     </tr>
   </template>
