@@ -9,6 +9,16 @@
 .manual-copy p { font-size: 14px; line-height: 1.5; }
 .manual-copy textarea { display: block; width: 100%; min-height: 240px; padding: 12px; margin: 10px 0 16px; font: inherit; font-size: 16px; border: 1px solid #c7ded1; border-radius: 9px; resize: vertical; }
 .manual-copy button { margin: 4px 0; }
+.service-catalog { margin: 0 26px 24px; padding: 16px; border: 1px solid #dce8df; border-radius: 12px; background: #f7faf8; }
+.catalog-controls { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.catalog-controls select { flex: 1; min-width: 0; }
+.catalog-controls button { flex-shrink: 0; }
+.service-catalog p { margin: 10px 0 0; color: #65766e; font-size: 12px; line-height: 1.5; }
+@media (max-width: 700px) {
+  .service-catalog { margin: 0 14px 20px; padding: 14px; }
+  .catalog-controls { flex-direction: column; align-items: stretch; }
+  .catalog-controls select { flex: auto; font-size: 16px; }
+}
 * { box-sizing: border-box; }
 body { margin: 0; }
 button, input, select { font: inherit; }

@@ -26,6 +26,20 @@
 
     <section class="panel services" aria-labelledby="services-heading">
       <div class="section-heading"><span class="step">02</span><h2 id="services-heading">Услуги и стоимость</h2><span class="currency"><span data-currency>₸</span></span></div>
+      <div class="service-catalog">
+        <label for="catalog-service">Каталог услуг с готовыми ценами</label>
+        <div class="catalog-controls">
+          <select id="catalog-service" aria-describedby="catalog-note">
+            <option value="landing" data-name="Лендинг" data-price="50000">Лендинг — 50 000 ₸</option>
+            <option value="business" data-name="Сайт-визитка" data-price="80000">Сайт-визитка — 80 000 ₸</option>
+            <option value="shop" data-name="Интернет-магазин" data-price="150000">Интернет-магазин — 150 000 ₸</option>
+            <option value="design" data-name="Дизайн сайта" data-price="20000">Дизайн сайта — 20 000 ₸</option>
+            <option value="video" data-name="Монтаж видео" data-price="10000">Монтаж видео — 10 000 ₸</option>
+          </select>
+          <button type="button" id="add-catalog-item" class="add-button">Добавить в смету</button>
+        </div>
+        <p id="catalog-note">Готовые примеры — название, количество и цену можно изменить. Валюта меняет только обозначение, без конвертации.</p>
+      </div>
       <div class="table-wrap">
         <table>
           <caption class="visually-hidden">Позиции сметы. Суммы рассчитываются автоматически.</caption>

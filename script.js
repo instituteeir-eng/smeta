@@ -8,6 +8,7 @@ const emptyState = document.querySelector("#empty-state");
 const discountInput = document.querySelector("#discount");
 const vatInput = document.querySelector("#vat");
 const currencyInput = document.querySelector("#currency");
+const catalogSelect = document.querySelector("#catalog-service");
 const formatter = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 const draftKey = "smeta-5-minutes.draft.v1";
 const draftFields = ["sender", "recipient", "estimate-number", "estimate-date", "discount", "vat", "currency"];
@@ -31,6 +32,9 @@ function recalculate() {
   const currency = currencyInput.value;
   const money = (value) => `${formatter.format(value)} ${currency}`;
   document.querySelectorAll("[data-currency]").forEach((label) => { label.textContent = currency; });
+  for (const option of catalogSelect.options) {
+    option.textContent = `${option.dataset.name} — ${money(Number(option.dataset.price))}`;
+  }
   let total = 0;
   for (const row of items.rows) {
     const amount = numericValue(row.querySelector(".item-quantity")) * numericValue(row.querySelector(".item-price"));
@@ -54,14 +58,23 @@ function recalculate() {
   if (draftReady) saveDraft();
 }
 
-function addItem(focus = true) {
+function addItem(focus = true, service = null) {
   const row = template.content.firstElementChild.cloneNode(true);
+  if (service) {
+    row.querySelector(".item-name").value = service.name;
+    row.querySelector(".item-quantity").value = "1";
+    row.querySelector(".item-price").value = service.price;
+  }
   items.append(row);
   recalculate();
   if (focus) row.querySelector(".item-name").focus();
 }
 
 addButton.addEventListener("click", () => addItem());
+document.querySelector("#add-catalog-item").addEventListener("click", () => {
+  const selected = catalogSelect.selectedOptions[0];
+  if (selected) addItem(true, selected.dataset);
+});
 discountInput.addEventListener("input", recalculate);
 vatInput.addEventListener("input", recalculate);
 currencyInput.addEventListener("change", recalculate);
