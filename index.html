@@ -22,6 +22,15 @@
         <label>Номер сметы<input type="text" id="estimate-number" value="СМ-001"></label>
         <label>Дата<input type="date" id="estimate-date"></label>
       </div>
+      <section class="sender-details" aria-labelledby="sender-details-heading">
+        <h3 id="sender-details-heading">Мои реквизиты</h3>
+        <p>Сохраните поле «От кого» отдельно от черновика и применяйте его в новых сметах.</p>
+        <div class="sender-actions">
+          <button type="button" id="save-sender" class="add-button">Сохранить «От кого»</button>
+          <button type="button" id="apply-sender" class="add-button">Применить реквизиты</button>
+        </div>
+        <p id="sender-status" role="status"></p>
+      </section>
     </section>
 
     <section class="panel services" aria-labelledby="services-heading">

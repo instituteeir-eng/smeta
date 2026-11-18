@@ -11,6 +11,7 @@ const currencyInput = document.querySelector("#currency");
 const catalogSelect = document.querySelector("#catalog-service");
 const formatter = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 });
 const draftKey = "smeta-5-minutes.draft.v1";
+const senderKey = "smeta-5-minutes.sender.v1";
 const draftFields = ["sender", "recipient", "estimate-number", "estimate-date", "discount", "vat", "currency"];
 const itemFields = ["item-name", "item-quantity", "item-unit", "item-price"];
 let draftReady = false;
@@ -101,6 +102,60 @@ draftReady = true;
 
 document.querySelector(".details-grid").addEventListener("input", saveDraft);
 document.querySelector(".details-grid").addEventListener("change", saveDraft);
+
+// Read separately from the draft, including after it has been cleared.
+function readSender() {
+  const saved = localStorage.getItem(senderKey);
+  if (saved === null) return null;
+  const details = JSON.parse(saved);
+  if (!details || details.version !== 1 || typeof details.sender !== "string" || !details.sender.trim()) {
+    throw new Error("Invalid sender details");
+  }
+  return details.sender;
+}
+
+const senderStatus = document.querySelector("#sender-status");
+try {
+  const saved = readSender();
+  senderStatus.textContent = saved === null ? "Реквизиты ещё не сохранены." : `Сохранено: ${saved}`;
+} catch {
+  senderStatus.textContent = "Не удалось прочитать реквизиты. Сохранённые данные не изменены.";
+}
+
+document.querySelector("#save-sender").addEventListener("click", () => {
+  const sender = document.querySelector("#sender").value;
+  if (!sender.trim()) {
+    senderStatus.textContent = "Заполните поле «От кого», затем сохраните реквизиты.";
+    document.querySelector("#sender").focus();
+    return;
+  }
+  try {
+    const previous = localStorage.getItem(senderKey);
+    const next = JSON.stringify({ version: 1, sender });
+    if (previous !== null && previous !== next && !window.confirm("Заменить сохранённые реквизиты данными поля «От кого»?")) return;
+    localStorage.setItem(senderKey, next);
+    senderStatus.textContent = `Реквизиты сохранены: ${sender}`;
+  } catch {
+    senderStatus.textContent = "Не удалось сохранить реквизиты. Хранилище браузера недоступно или заполнено.";
+  }
+});
+
+document.querySelector("#apply-sender").addEventListener("click", () => {
+  try {
+    const saved = readSender();
+    if (saved === null) {
+      senderStatus.textContent = "Сначала заполните поле «От кого» и сохраните реквизиты.";
+      return;
+    }
+    const input = document.querySelector("#sender");
+    if (input.value && input.value !== saved && !window.confirm("Заменить поле «От кого» сохранёнными реквизитами?")) return;
+    input.value = saved;
+    saveDraft();
+    senderStatus.textContent = "Реквизиты применены к этой смете.";
+  } catch {
+    senderStatus.textContent = "Не удалось прочитать реквизиты. Поле «От кого» не изменено.";
+  }
+});
 
 function saveDraft() {
   const draft = {

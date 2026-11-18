@@ -38,6 +38,10 @@ h2 { font-size: 18px; margin: 0; }
 label { display: block; font-size: 13px; font-weight: 600; color: #50665b; }
 input, select { width: 100%; min-width: 0; min-height: 45px; border: 1px solid #dce5df; border-radius: 9px; padding: 11px 12px; color: #203730; background: #fff; transition: border-color .15s, box-shadow .15s; }
 .details-grid input { margin-top: 8px; }
+.sender-details { margin-top: 24px; padding-top: 20px; border-top: 1px solid #edf1ee; }
+.sender-details h3 { margin: 0; font-size: 15px; }
+.sender-details p { margin: 10px 0; font-size: 13px; color: #50665b; line-height: 1.5; overflow-wrap: anywhere; }
+.sender-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 input::placeholder { color: #88968f; font-weight: 400; }
 input:focus, select:focus { outline: none; border-color: #28815f; box-shadow: 0 0 0 3px #28815f20; }
 button:focus-visible { outline: 3px solid #6ab69a; outline-offset: 3px; }
