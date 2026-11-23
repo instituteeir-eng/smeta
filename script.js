@@ -4,6 +4,7 @@ const items = document.querySelector("#items");
 const template = document.querySelector("#item-template");
 const addButton = document.querySelector("#add-item");
 const totalOutput = document.querySelector("#grand-total");
+const amountWordsOutput = document.querySelector("#amount-words");
 const emptyState = document.querySelector("#empty-state");
 const discountInput = document.querySelector("#discount");
 const vatInput = document.querySelector("#vat");
@@ -27,6 +28,42 @@ document.querySelector("#estimate-date").value = [
 function numericValue(input) {
   const value = Number(input.value);
   return Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function amountInWords(value, currency) {
+  if (currency !== "₸" || !Number.isFinite(value) || value <= 0 || value > 999999999) return "";
+  // Use the same monetary rounding as the displayed total, without changing calculations.
+  const parts = formatter.formatToParts(value);
+  const integer = Number(parts.filter((part) => part.type === "integer").map((part) => part.value).join(""));
+  const fraction = (parts.find((part) => part.type === "fraction")?.value || "").padEnd(2, "0");
+  if (integer === 0 && fraction === "00") return "";
+  const units = ["", "один", "два", "три", "четыре", "пять", "шесть", "семь", "восемь", "девять"];
+  const teens = ["десять", "одиннадцать", "двенадцать", "тринадцать", "четырнадцать", "пятнадцать", "шестнадцать", "семнадцать", "восемнадцать", "девятнадцать"];
+  const tens = ["", "", "двадцать", "тридцать", "сорок", "пятьдесят", "шестьдесят", "семьдесят", "восемьдесят", "девяносто"];
+  const hundreds = ["", "сто", "двести", "триста", "четыреста", "пятьсот", "шестьсот", "семьсот", "восемьсот", "девятьсот"];
+  const words = [];
+  function group(number, feminine, forms) {
+    if (!number) return;
+    words.push(hundreds[Math.floor(number / 100)]);
+    const remainder = number % 100;
+    if (remainder >= 10 && remainder <= 19) words.push(teens[remainder - 10]);
+    else {
+      const unit = number % 10;
+      words.push(tens[Math.floor(remainder / 10)], feminine && unit === 1 ? "одна" : feminine && unit === 2 ? "две" : units[unit]);
+    }
+    if (forms) {
+      const unit = number % 10;
+      words.push(forms[remainder >= 11 && remainder <= 14 ? 2 : unit === 1 ? 0 : unit >= 2 && unit <= 4 ? 1 : 2]);
+    }
+  }
+  group(Math.floor(integer / 1000000), false, ["миллион", "миллиона", "миллионов"]);
+  group(Math.floor(integer / 1000) % 1000, true, ["тысяча", "тысячи", "тысяч"]);
+  group(integer % 1000, false);
+  if (!integer) words.push("ноль");
+  words.push("тенге");
+  if (fraction !== "00") words.push(fraction, "тиын");
+  const text = words.filter(Boolean).join(" ");
+  return text[0].toUpperCase() + text.slice(1);
 }
 
 function recalculate() {
@@ -55,6 +92,9 @@ function recalculate() {
   document.querySelector("#discount-row").hidden = discount === 0;
   document.querySelector("#vat-row").hidden = vat === 0;
   totalOutput.textContent = Number.isFinite(afterDiscount + vat) ? money(afterDiscount + vat) : "Слишком большое значение";
+  const words = amountInWords(afterDiscount + vat, currency);
+  amountWordsOutput.textContent = words ? `Сумма прописью: ${words}` : "";
+  amountWordsOutput.hidden = !words;
   emptyState.hidden = items.rows.length > 0;
   if (draftReady) saveDraft();
 }
@@ -245,6 +285,7 @@ function whatsappText() {
   lines.push(`Сумма после скидки: ${document.querySelector("#after-discount").textContent}`);
   if (!document.querySelector("#vat-row").hidden) lines.push(`НДС (${formatter.format(Math.min(100, numericValue(vatInput)))}%): ${document.querySelector("#vat-amount").textContent}`);
   lines.push(`Итого к оплате: ${totalOutput.textContent}`);
+  if (!amountWordsOutput.hidden) lines.push(amountWordsOutput.textContent);
   return lines.join("\n");
 }
 
@@ -301,6 +342,7 @@ function preparePrint() {
   const totals = document.createElement("div");
   totals.className = "print-totals";
   totals.append(document.querySelector(".summary").cloneNode(true), document.querySelector(".total-bar").cloneNode(true));
+  totals.append(amountWordsOutput.cloneNode(true));
   printView.append(totals);
   const signature = document.createElement("p");
   signature.className = "print-signature";
