@@ -88,6 +88,15 @@
       <button type="button" id="select-copy-text" class="add-button">Выделить весь текст</button>
       <button type="button" id="close-copy" class="add-button">Закрыть</button>
     </section>
+    <section class="panel history" aria-labelledby="history-heading">
+      <h2 id="history-heading">История смет</h2>
+      <p id="history-note">Каждое сохранение создаёт отдельную копию, даже если номер сметы совпадает.</p>
+      <button type="button" id="save-history" class="add-button" aria-describedby="history-note">Сохранить в историю</button>
+      <p>История доступна только в этом браузере и месте хранения. Очистка данных браузера удалит её.</p>
+      <p id="history-status" role="status"></p>
+      <p id="history-empty">Вы ещё не сохранили ни одной сметы</p>
+      <ul id="history-list"></ul>
+    </section>
     <footer>Ваши данные остаются в этом браузере. Черновик восстанавливается после обновления страницы.</footer>
   </main>
   <article id="print-estimate" aria-label="Смета для печати"></article>

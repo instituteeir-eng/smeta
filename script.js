@@ -74,6 +74,7 @@ function recalculate() {
     option.textContent = `${option.dataset.name} — ${money(Number(option.dataset.price))}`;
   }
   let total = 0;
+  let amountsValid = true;
   for (const row of items.rows) {
     const amount = numericValue(row.querySelector(".item-quantity")) * numericValue(row.querySelector(".item-price"));
     const valid = Number.isFinite(amount) && Number.isFinite(total + amount);
@@ -81,18 +82,19 @@ function recalculate() {
     row.querySelector(".item-price").setAttribute("aria-label", `Цена, ${currency}`);
     row.querySelector(".item-total").textContent = valid ? money(amount) : "Слишком большое значение";
     if (valid) total += amount;
+    else amountsValid = false;
   }
   const discount = total * (Math.min(100, numericValue(discountInput)) / 100);
   const afterDiscount = total - discount;
   const vat = afterDiscount * (Math.min(100, numericValue(vatInput)) / 100);
-  document.querySelector("#subtotal").textContent = money(total);
-  document.querySelector("#discount-amount").textContent = `−${money(discount)}`;
-  document.querySelector("#after-discount").textContent = money(afterDiscount);
-  document.querySelector("#vat-amount").textContent = money(vat);
+  document.querySelector("#subtotal").textContent = amountsValid ? money(total) : "Слишком большое значение";
+  document.querySelector("#discount-amount").textContent = amountsValid ? `−${money(discount)}` : "—";
+  document.querySelector("#after-discount").textContent = amountsValid ? money(afterDiscount) : "—";
+  document.querySelector("#vat-amount").textContent = amountsValid ? money(vat) : "—";
   document.querySelector("#discount-row").hidden = discount === 0;
   document.querySelector("#vat-row").hidden = vat === 0;
-  totalOutput.textContent = Number.isFinite(afterDiscount + vat) ? money(afterDiscount + vat) : "Слишком большое значение";
-  const words = amountInWords(afterDiscount + vat, currency);
+  totalOutput.textContent = amountsValid && Number.isFinite(afterDiscount + vat) ? money(afterDiscount + vat) : "Слишком большое значение";
+  const words = amountsValid ? amountInWords(afterDiscount + vat, currency) : "";
   amountWordsOutput.textContent = words ? `Сумма прописью: ${words}` : "";
   amountWordsOutput.hidden = !words;
   emptyState.hidden = items.rows.length > 0;
@@ -197,12 +199,16 @@ document.querySelector("#apply-sender").addEventListener("click", () => {
   }
 });
 
-function saveDraft() {
-  const draft = {
+function captureEstimate() {
+  return {
     version: 1,
     fields: Object.fromEntries(draftFields.map((id) => [id, document.getElementById(id).value])),
     items: Array.from(items.rows, (row) => Object.fromEntries(itemFields.map((name) => [name, row.querySelector(`.${name}`).value])))
   };
+}
+
+function saveDraft() {
+  const draft = captureEstimate();
   try {
     localStorage.setItem(draftKey, JSON.stringify(draft));
     document.querySelector("#draft-status").textContent = "Черновик сохранён в этом браузере.";
@@ -361,3 +367,141 @@ document.querySelector("#save-pdf").addEventListener("click", () => {
 });
 // Also refresh the snapshot when printing with the browser menu or Ctrl+P.
 window.addEventListener("beforeprint", preparePrint);
+
+const historyKey = "smeta-5-minutes.history.v1";
+const historyStatus = document.querySelector("#history-status");
+const historyList = document.querySelector("#history-list");
+
+// Validate on detached controls before touching the form or stored draft.
+function validateEstimate(estimate) {
+  if (!estimate || estimate.version !== 1 || !estimate.fields || !Array.isArray(estimate.items)
+    || !draftFields.every((id) => typeof estimate.fields[id] === "string")
+    || !["₸", "₽", "$", "€"].includes(estimate.fields.currency)
+    || !estimate.items.every((row) => row && itemFields.every((name) => typeof row[name] === "string"))) {
+    throw new Error("Invalid estimate");
+  }
+  function number(value, maximum = Infinity) {
+    const input = document.createElement("input");
+    input.type = "number";
+    input.value = value;
+    const result = Number(value);
+    if ((value !== "" && input.value === "") || !Number.isFinite(result) || result < 0 || result > maximum) {
+      throw new Error("Invalid number");
+    }
+    return result;
+  }
+  const date = document.createElement("input");
+  date.type = "date";
+  date.value = estimate.fields["estimate-date"];
+  if (date.value !== estimate.fields["estimate-date"]) throw new Error("Invalid date");
+  let subtotal = 0;
+  for (const row of estimate.items) {
+    subtotal += number(row["item-quantity"]) * number(row["item-price"]);
+    if (!Number.isFinite(subtotal)) throw new Error("Overflow");
+  }
+  const afterDiscount = subtotal - subtotal * (number(estimate.fields.discount, 100) / 100);
+  const total = afterDiscount + afterDiscount * (number(estimate.fields.vat, 100) / 100);
+  if (!Number.isFinite(total)) throw new Error("Overflow");
+  return total;
+}
+
+function readHistory() {
+  const raw = localStorage.getItem(historyKey);
+  if (raw === null) return [];
+  const history = JSON.parse(raw);
+  if (!history || history.version !== 1 || !Array.isArray(history.entries)) throw new Error("Invalid history");
+  const ids = new Set();
+  for (const entry of history.entries) {
+    if (!entry || typeof entry.id !== "string" || !entry.id || ids.has(entry.id)
+      || typeof entry.savedAt !== "string" || !Number.isFinite(Date.parse(entry.savedAt))) throw new Error("Invalid entry");
+    ids.add(entry.id);
+    validateEstimate(entry.estimate);
+  }
+  return history.entries;
+}
+
+function renderHistory(entries) {
+  const fragment = document.createDocumentFragment();
+  for (const entry of entries) {
+    const fields = entry.estimate.fields;
+    const item = document.createElement("li");
+    item.className = "history-entry";
+    const heading = document.createElement("h3");
+    heading.textContent = fields["estimate-number"].trim() || "Без номера";
+    const client = document.createElement("p");
+    client.textContent = fields.recipient.trim() || "Клиент не указан";
+    const dates = document.createElement("p");
+    dates.textContent = `Дата сметы: ${fields["estimate-date"] ? fields["estimate-date"].split("-").reverse().join(".") : "—"}. Сохранено: ${new Date(entry.savedAt).toLocaleString("ru-RU")}`;
+    const total = document.createElement("p");
+    total.textContent = `Итого: ${formatter.format(validateEstimate(entry.estimate))} ${fields.currency}`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "add-button";
+    button.textContent = "Открыть";
+    button.setAttribute("aria-label", `Открыть смету ${heading.textContent}, ${client.textContent}`);
+    button.addEventListener("click", () => openHistoryEstimate(entry.id));
+    item.append(heading, client, dates, total, button);
+    fragment.append(item);
+  }
+  historyList.replaceChildren(fragment);
+  document.querySelector("#history-empty").hidden = entries.length > 0;
+}
+
+function openHistoryEstimate(id) {
+  try {
+    const entry = readHistory().find((candidate) => candidate.id === id);
+    if (!entry) throw new Error("Missing entry");
+    const estimate = entry.estimate;
+    if (JSON.stringify(captureEstimate()) !== JSON.stringify(estimate)
+      && !window.confirm("Открыть выбранную смету вместо текущей? Чтобы сохранить текущую смету, сначала добавьте её в историю")) return;
+    const rows = estimate.items.map((savedRow) => {
+      const row = template.content.firstElementChild.cloneNode(true);
+      itemFields.forEach((name) => { row.querySelector(`.${name}`).value = savedRow[name]; });
+      return row;
+    });
+    // Commit the draft before replacing the form. A failed write leaves it intact.
+    localStorage.setItem(draftKey, JSON.stringify(estimate));
+    draftFields.forEach((id) => { document.getElementById(id).value = estimate.fields[id]; });
+    items.replaceChildren(...rows);
+    draftReady = false;
+    try { recalculate(); } finally { draftReady = true; }
+    document.querySelector("#manual-copy").hidden = true;
+    document.querySelector("#whatsapp-text").value = "";
+    document.querySelector("#copy-status").textContent = "";
+    document.querySelector("#print-estimate").replaceChildren();
+    document.querySelector("#draft-status").textContent = "Открытая смета сохранена как текущий черновик.";
+    historyStatus.textContent = "Смета открыта. Изменения не затрагивают её копию в истории.";
+    document.querySelector("#sender").focus();
+  } catch {
+    historyStatus.textContent = "Не удалось открыть смету. Проверьте доступность и свободное место хранилища; данные истории могут быть повреждены. Текущая смета не изменена.";
+  }
+}
+
+document.querySelector("#save-history").addEventListener("click", () => {
+  const estimate = captureEstimate();
+  try {
+    validateEstimate(estimate);
+    if (Array.from(document.querySelectorAll('.workspace input[type="number"]')).some((input) => !input.validity.valid)) {
+      throw new Error("Invalid input");
+    }
+  } catch {
+    historyStatus.textContent = "Не удалось сохранить смету. Исправьте дату, цены, количество, скидку или НДС: значения должны быть допустимыми, а суммы — конечными.";
+    return;
+  }
+  try {
+    const entries = readHistory();
+    let id;
+    do { id = `${Date.now()}-${Math.random().toString(36).slice(2)}`; } while (entries.some((entry) => entry.id === id));
+    const next = [{ id, savedAt: new Date().toISOString(), estimate }, ...entries];
+    localStorage.setItem(historyKey, JSON.stringify({ version: 1, entries: next }));
+    renderHistory(next);
+    historyStatus.textContent = "Копия сметы сохранена в истории.";
+  } catch {
+    historyStatus.textContent = "Не удалось сохранить историю. Хранилище недоступно, заполнено или содержит повреждённые данные. Ранее сохранённые записи не изменены.";
+  }
+});
+
+try { renderHistory(readHistory()); } catch {
+  document.querySelector("#history-empty").hidden = true;
+  historyStatus.textContent = "Не удалось прочитать историю. Хранилище недоступно или данные повреждены. Сохранённые данные не изменены.";
+}
