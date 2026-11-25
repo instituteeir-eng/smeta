@@ -371,6 +371,9 @@ window.addEventListener("beforeprint", preparePrint);
 const historyKey = "smeta-5-minutes.history.v1";
 const historyStatus = document.querySelector("#history-status");
 const historyList = document.querySelector("#history-list");
+const historySearch = document.querySelector("#history-search");
+const historySearchStatus = document.querySelector("#history-search-status");
+historySearch.value = "";
 
 // Validate on detached controls before touching the form or stored draft.
 function validateEstimate(estimate) {
@@ -421,8 +424,11 @@ function readHistory() {
 }
 
 function renderHistory(entries) {
+  const query = historySearch.value.trim().toLocaleLowerCase("ru-RU");
+  const matches = entries.filter(({ estimate: { fields } }) =>
+    [fields["estimate-number"], fields.recipient].some((value) => value.toLocaleLowerCase("ru-RU").includes(query)));
   const fragment = document.createDocumentFragment();
-  for (const entry of entries) {
+  for (const entry of matches) {
     const fields = entry.estimate.fields;
     const item = document.createElement("li");
     item.className = "history-entry";
@@ -445,6 +451,8 @@ function renderHistory(entries) {
   }
   historyList.replaceChildren(fragment);
   document.querySelector("#history-empty").hidden = entries.length > 0;
+  historySearchStatus.textContent = entries.length > 0 && matches.length === 0
+    ? "Ничего не найдено. Измените запрос" : "";
 }
 
 function openHistoryEstimate(id) {
@@ -501,7 +509,12 @@ document.querySelector("#save-history").addEventListener("click", () => {
   }
 });
 
-try { renderHistory(readHistory()); } catch {
-  document.querySelector("#history-empty").hidden = true;
-  historyStatus.textContent = "Не удалось прочитать историю. Хранилище недоступно или данные повреждены. Сохранённые данные не изменены.";
+function refreshHistorySearch() {
+  try { renderHistory(readHistory()); } catch {
+    historyList.replaceChildren();
+    document.querySelector("#history-empty").hidden = true;
+    historySearchStatus.textContent = "Не удалось прочитать историю. Хранилище недоступно или данные повреждены. Сохранённые данные не изменены.";
+  }
 }
+historySearch.addEventListener("input", refreshHistorySearch);
+refreshHistorySearch();

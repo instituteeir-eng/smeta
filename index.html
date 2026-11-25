@@ -94,6 +94,9 @@
       <button type="button" id="save-history" class="add-button" aria-describedby="history-note">Сохранить в историю</button>
       <p>История доступна только в этом браузере и месте хранения. Очистка данных браузера удалит её.</p>
       <p id="history-status" role="status"></p>
+      <label for="history-search">Поиск по номеру или клиенту</label>
+      <input id="history-search" type="search" placeholder="Например, СМ-001 или Алия" autocomplete="off" aria-controls="history-list">
+      <p id="history-search-status" role="status"></p>
       <p id="history-empty">Вы ещё не сохранили ни одной сметы</p>
       <ul id="history-list"></ul>
     </section>
