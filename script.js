@@ -463,6 +463,23 @@ function renameHistoryEstimate(id) {
   }
 }
 
+function deleteHistoryEstimate(id) {
+  try {
+    const entry = readHistory().find((candidate) => candidate.id === id);
+    if (!entry) throw new Error("Missing entry");
+    const title = entry.name || entry.estimate.fields["estimate-number"].trim() || "Без номера";
+    const client = entry.estimate.fields.recipient.trim() || "Клиент не указан";
+    const savedAt = new Date(entry.savedAt).toLocaleString("ru-RU");
+    if (!window.confirm(`Удалить сохранённую смету «${title}», ${client}, сохранено: ${savedAt}? Это действие нельзя отменить`)) return;
+    const entries = changeHistoryEntry(id, () => null);
+    renderHistory(entries);
+    historySearch.focus();
+    historyStatus.textContent = "Сохранённая смета удалена. Текущая смета и черновик не изменены.";
+  } catch {
+    historyStatus.textContent = "Не удалось удалить смету. Запись отсутствует, хранилище недоступно, заполнено или данные повреждены. Сохранённые данные не изменены.";
+  }
+}
+
 function renderHistory(entries, focusRenameId) {
   const query = historySearch.value.trim().toLocaleLowerCase("ru-RU");
   const matches = entries.filter(({ estimate: { fields } }) =>
@@ -502,6 +519,13 @@ function renderHistory(entries, focusRenameId) {
     rename.setAttribute("aria-label", `Переименовать смету ${heading.textContent}, ${client.textContent}`);
     rename.addEventListener("click", () => renameHistoryEstimate(entry.id));
     item.append(rename);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "add-button history-delete";
+    remove.textContent = "Удалить";
+    remove.setAttribute("aria-label", `Удалить смету ${heading.textContent}, ${client.textContent}`);
+    remove.addEventListener("click", () => deleteHistoryEstimate(entry.id));
+    item.append(remove);
     if (entry.id === focusRenameId) focusTarget = rename;
     fragment.append(item);
   }

@@ -124,6 +124,62 @@ test('Переименование: ошибки чтения/записи, по
   assert.match(el('#history-status').textContent,/Не удалось переименовать/);
   resetFixture(); search('');
 });
+test('Удаление: подтверждение, отмена, одинаковые номера и названия, сохранность формы', () => {
+  resetFixture();
+  const named = entries(); named[1].name = named[2].name = '<Кухня> & монтаж';
+  data.set(key,JSON.stringify({version:1,entries:named}));
+  search('см-001'); open('search-2');
+  const form = snapshot(), stored = JSON.stringify([...data]), before = entries();
+  let message;
+  context.window.confirm = text => { message = text; return false; };
+  const button = el('#history-list').children[1].children.at(-1);
+  assert.equal(button.textContent,'Удалить'); button.listeners.click();
+  assert.match(message, /<Кухня> & монтаж/); assert.match(message,/Алия Иванова/);
+  assert.ok(message.includes(new Date(fixture[2].savedAt).toLocaleString('ru-RU')));
+  assert.match(message,/Это действие нельзя отменить/);
+  assert.equal(JSON.stringify([...data]),stored);
+  context.window.confirm = () => true;
+  let focused = false; el('#history-search').focus = () => { focused = true; };
+  button.listeners.click();
+  assert.deepEqual(entries(),before.filter(entry => entry.id !== 'search-2'));
+  assert.deepEqual(snapshot(),form);
+  assert.equal(JSON.stringify([...data].filter(([k]) => k !== key)),JSON.stringify(JSON.parse(stored).filter(([k]) => k !== key)));
+  assert.equal(el('#history-search').value,'см-001'); assert.equal(visibleClients().length,1);
+  assert.equal(focused,true); assert.match(el('#history-status').textContent,/Сохранённая смета удалена/);
+  const fresh = vm.createContext({...context}); vm.runInContext(source.slice(source.indexOf('const historyKey =')),fresh);
+  assert.equal(visibleClients().length,3); assert.equal(entries().some(entry => entry.id === 'search-2'),false);
+  el('#history-search').addEventListener('input',context.refreshHistorySearch);
+});
+
+test('Удаление: последний результат поиска и последняя запись', () => {
+  resetFixture(); search('альф'); context.deleteHistoryEstimate('search-1');
+  assert.equal(visibleClients().length,0); assert.equal(el('#history-empty').hidden,true);
+  assert.equal(el('#history-search-status').textContent,'Ничего не найдено. Измените запрос');
+  assert.equal(el('#history-search').value,'альф');
+  for (const entry of entries()) context.deleteHistoryEstimate(entry.id);
+  assert.equal(entries().length,0); assert.equal(el('#history-empty').hidden,false);
+  assert.equal(el('#history-search-status').textContent,'');
+});
+
+test('Удаление: ошибки хранилища, повреждения и исчезнувшая запись без ложного успеха', () => {
+  resetFixture(); search('');
+  const original = data.get(key), form = snapshot(), draft = data.get('draft');
+  for (const mode of ['read','write','missing','broken','duplicate']) {
+    data.set(key,original); failRead = mode === 'read'; failWrite = mode === 'write';
+    if (mode === 'broken') data.set(key,'{');
+    if (mode === 'duplicate') { const invalid = JSON.parse(original); invalid.entries[1].id = invalid.entries[0].id; data.set(key,JSON.stringify(invalid)); }
+    const before = data.get(key);
+    context.deleteHistoryEstimate(mode === 'missing' ? 'missing-id' : 'search-0');
+    assert.equal(data.get(key),before); assert.deepEqual(snapshot(),form); assert.equal(data.get('draft'),draft);
+    assert.match(el('#history-status').textContent,/Не удалось удалить/);
+    failRead = failWrite = false;
+  }
+  data.set(key,original);
+  context.window.confirm = () => { data.set(key,JSON.stringify({version:1,entries:fixture.slice(1)})); return true; };
+  context.deleteHistoryEstimate('search-0'); assert.deepEqual(entries(),fixture.slice(1));
+  assert.match(el('#history-status').textContent,/Не удалось удалить/);
+  context.window.confirm = () => confirm; resetFixture(); search('');
+});
 console.log(JSON.stringify({passed:results.length, tests:results, limitation:'Имитация DOM и localStorage. Реальная вёрстка, фокус, перезагрузка, PDF и буфер обмена требуют браузера.'},null,2));
 `;
 vm.runInNewContext(harness.slice(0, harness.lastIndexOf('console.log(JSON.stringify')) + tests, {require, console}, {filename:'search-suite.cjs'});
