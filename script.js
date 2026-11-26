@@ -373,7 +373,9 @@ const historyStatus = document.querySelector("#history-status");
 const historyList = document.querySelector("#history-list");
 const historySearch = document.querySelector("#history-search");
 const historySearchStatus = document.querySelector("#history-search-status");
+const historySort = document.querySelector("#history-sort");
 historySearch.value = "";
+historySort.value = "newest";
 
 // Validate on detached controls before touching the form or stored draft.
 function validateEstimate(estimate) {
@@ -484,9 +486,19 @@ function renderHistory(entries, focusRenameId) {
   const query = historySearch.value.trim().toLocaleLowerCase("ru-RU");
   const matches = entries.filter(({ estimate: { fields } }) =>
     [fields["estimate-number"], fields.recipient].some((value) => value.toLocaleLowerCase("ru-RU").includes(query)));
+  // Sort a detached view; equal keys retain the original storage order.
+  const sorted = matches.map((entry, index) => ({
+    entry, index, time: Date.parse(entry.savedAt), total: validateEstimate(entry.estimate)
+  })).sort((a, b) => {
+    const newestFirst = b.time - a.time;
+    if (historySort.value === "oldest") return -newestFirst || a.index - b.index;
+    if (historySort.value === "total-asc") return a.total - b.total || newestFirst || a.index - b.index;
+    if (historySort.value === "total-desc") return b.total - a.total || newestFirst || a.index - b.index;
+    return newestFirst || a.index - b.index;
+  });
   const fragment = document.createDocumentFragment();
   let focusTarget;
-  for (const entry of matches) {
+  for (const { entry } of sorted) {
     const fields = entry.estimate.fields;
     const item = document.createElement("li");
     item.className = "history-entry";
@@ -598,4 +610,5 @@ function refreshHistorySearch() {
   }
 }
 historySearch.addEventListener("input", refreshHistorySearch);
+historySort.addEventListener("change", refreshHistorySearch);
 refreshHistorySearch();

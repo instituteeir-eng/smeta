@@ -180,6 +180,86 @@ test('Удаление: ошибки хранилища, повреждения 
   assert.match(el('#history-status').textContent,/Не удалось удалить/);
   context.window.confirm = () => confirm; resetFixture(); search('');
 });
+const sort = value => { el('#history-sort').value = value; el('#history-sort').listeners.change(); };
+const titles = () => el('#history-list').children.map(item => item.children[0].textContent);
+const sortFixture = [10000,30000,20000].map((price,index) => {
+  const estimate = structuredClone(base);
+  estimate.fields.recipient = index === 2 ? 'Борис' : 'Алия';
+  estimate.fields['estimate-number'] = index === 2 ? 'СМ-002' : 'СМ-001';
+  estimate.fields['estimate-date'] = '2026-11-' + (23-index);
+  estimate.items = [{...estimate.items[0], 'item-quantity':'1', 'item-price':String(price)}];
+  return {id:'sort-'+index,name:['А','Б','В'][index],savedAt:'2026-11-20T'+(10+index)+':00:00.000Z',estimate};
+});
+const resetSort = () => { data.set(key,JSON.stringify({version:1,entries:sortFixture})); search(''); };
+test('Сортировка: пример 3, поиск, неизменность хранилища и сброс при загрузке', () => {
+  resetSort(); const stored = JSON.stringify([...data]), form = snapshot();
+  for (const [mode,all,filtered] of [
+    ['newest',['В','Б','А'],['Б','А']], ['oldest',['А','Б','В'],['А','Б']],
+    ['total-asc',['А','В','Б'],['А','Б']], ['total-desc',['Б','В','А'],['Б','А']]
+  ]) {
+    search(''); sort(mode); assert.deepEqual(titles(),all);
+    search('алия'); assert.deepEqual(titles(),filtered);
+    assert.equal(el('#history-sort').value,mode);
+  }
+  assert.equal(JSON.stringify([...data]),stored); assert.deepEqual(snapshot(),form);
+  const fresh = vm.createContext({...context}); vm.runInContext(source.slice(source.indexOf('const historyKey =')),fresh);
+  assert.equal(el('#history-search').value,''); assert.equal(el('#history-sort').value,'newest');
+  assert.deepEqual(titles(),['В','Б','А']); assert.equal(JSON.stringify([...data]),stored);
+  el('#history-search').addEventListener('input',context.refreshHistorySearch);
+  el('#history-sort').addEventListener('change',context.refreshHistorySearch);
+});
+test('Сортировка: пример 6, равные суммы и даты, скидка и НДС', () => {
+  const mixed = [100,1000,0,100,100].map((price,i) => {
+    const entry = structuredClone(sortFixture[0]); entry.id='mixed-'+i; entry.name=String(i);
+    entry.estimate.items[0]['item-price']=String(price);
+    entry.estimate.fields.currency=i===0?'$':'₸';
+    entry.savedAt=i>=3?'2026-11-21T10:00:00.000Z':entry.savedAt; return entry;
+  });
+  data.set(key,JSON.stringify({version:1,entries:mixed})); search(''); sort('total-asc');
+  assert.deepEqual(titles(),['2','3','4','0','1']); sort('total-desc');
+  assert.deepEqual(titles(),['1','3','4','0','2']);
+  sort('newest'); assert.deepEqual(titles(),['3','4','0','1','2']);
+  sort('oldest'); assert.deepEqual(titles(),['0','1','2','3','4']);
+  mixed[1].estimate.fields.discount='95'; mixed[1].estimate.fields.vat='10';
+  data.set(key,JSON.stringify({version:1,entries:mixed})); sort('total-asc');
+  assert.deepEqual(titles(),['2','1','3','4','0']);
+  assert.equal(context.validateEstimate(mixed[1].estimate),55);
+});
+test('Сортировка: сохранение, переименование, открытие и удаление по ID во всех режимах', () => {
+  for (const mode of ['newest','oldest','total-asc','total-desc']) {
+    resetSort(); sort(mode); search('алия');
+    const target = el('#history-list').children.find(item=>item.children[0].textContent==='Б');
+    context.window.prompt=()=> 'Ремонт кухни';
+    target.children.find(child=>child.textContent==='Переименовать').listeners.click();
+    assert.equal(entries()[1].name,'Ремонт кухни'); assert.equal(entries()[0].name,'А');
+    const renamed = el('#history-list').children.find(item=>item.children[0].textContent==='Ремонт кухни');
+    renamed.children.find(child=>child.textContent==='Открыть').listeners.click();
+    assert.deepEqual(snapshot(),sortFixture[1].estimate);
+    renamed.children.find(child=>child.textContent==='Удалить').listeners.click();
+    assert.deepEqual(entries().map(entry=>entry.id),['sort-0','sort-2']);
+    assert.deepEqual(titles(),['А']);
+    fill(sortFixture[0].estimate); el('#items').children[0].controls['.item-price'].value='5000'; save();
+    assert.equal(entries().length,3); assert.equal(entries()[0].name,undefined);
+    assert.deepEqual(titles(),mode==='newest'||mode==='total-asc'?['СМ-001','А']:['А','СМ-001']);
+    assert.equal(el('#history-search').value,'алия'); assert.equal(el('#history-sort').value,mode);
+  }
+});
+test('Сортировка: пустая история, ошибки чтения и неизменность WhatsApp', () => {
+  fill(base); const text=context.whatsappText();
+  for (const mode of ['newest','oldest','total-asc','total-desc']) {
+    data.set(key,JSON.stringify({version:1,entries:[]})); sort(mode);
+    assert.equal(el('#history-empty').hidden,false); assert.deepEqual(titles(),[]);
+    assert.equal(el('#history-search-status').textContent,'');
+    failRead=true; sort(mode); assert.match(el('#history-search-status').textContent,/Не удалось прочитать/); failRead=false;
+    data.set(key,'{'); sort(mode); assert.equal(data.get(key),'{'); assert.match(el('#history-search-status').textContent,/Не удалось прочитать/);
+    assert.equal(context.whatsappText(),text);
+  }
+  const html=fs.readFileSync('index.html','utf8');
+  assert.ok(html.includes('Вы ещё не сохранили ни одной сметы'));
+  assert.ok(html.includes('Суммы сравниваются численно, без конвертации по курсу'));
+  assert.doesNotMatch(functionSource('preparePrint'),/historySort|history-sort/);
+  resetFixture(); search(''); sort('newest');
+});
 console.log(JSON.stringify({passed:results.length, tests:results, limitation:'Имитация DOM и localStorage. Реальная вёрстка, фокус, перезагрузка, PDF и буфер обмена требуют браузера.'},null,2));
 `;
 vm.runInNewContext(harness.slice(0, harness.lastIndexOf('console.log(JSON.stringify')) + tests, {require, console}, {filename:'search-suite.cjs'});

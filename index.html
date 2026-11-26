@@ -97,6 +97,14 @@
       <label for="history-search">Поиск по номеру или клиенту</label>
       <input id="history-search" type="search" placeholder="Например, СМ-001 или Алия" autocomplete="off" aria-controls="history-list">
       <p id="history-search-status" role="status"></p>
+      <label for="history-sort">Сортировка</label>
+      <select id="history-sort" aria-controls="history-list" aria-describedby="history-sort-note">
+        <option value="newest">Сначала новые</option>
+        <option value="oldest">Сначала старые</option>
+        <option value="total-asc">Сумма по возрастанию</option>
+        <option value="total-desc">Сумма по убыванию</option>
+      </select>
+      <p id="history-sort-note">Суммы сравниваются численно, без конвертации по курсу</p>
       <p id="history-empty">Вы ещё не сохранили ни одной сметы</p>
       <ul id="history-list"></ul>
     </section>
