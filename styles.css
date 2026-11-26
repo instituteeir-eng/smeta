@@ -124,6 +124,8 @@ footer { text-align: center; font-size: 12px; color: #76877b; padding: 3px 12px 
 .history-entry { padding: 18px 0; border-top: 1px solid #dfe7e2; }
 .history-entry h3 { margin: 0; font-size: 16px; }
 .history-entry p { margin: 8px 0; }
+.history-rename { margin: 8px 0 0 8px; }
+@media (max-width: 700px) { .history-rename { margin-left: 0; } }
 @media (max-width: 700px) { .history { padding: 20px 16px; } }
 
 @page { size: A4 portrait; margin: 15mm; }

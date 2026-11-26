@@ -413,27 +413,69 @@ function readHistory() {
   if (raw === null) return [];
   const history = JSON.parse(raw);
   if (!history || history.version !== 1 || !Array.isArray(history.entries)) throw new Error("Invalid history");
-  const ids = new Set();
-  for (const entry of history.entries) {
-    if (!entry || typeof entry.id !== "string" || !entry.id || ids.has(entry.id)
-      || typeof entry.savedAt !== "string" || !Number.isFinite(Date.parse(entry.savedAt))) throw new Error("Invalid entry");
-    ids.add(entry.id);
-    validateEstimate(entry.estimate);
-  }
+  validateHistoryEntries(history.entries);
   return history.entries;
 }
 
-function renderHistory(entries) {
+function validateHistoryEntries(entries) {
+  const ids = new Set();
+  for (const entry of entries) {
+    if (!entry || typeof entry.id !== "string" || !entry.id || ids.has(entry.id)
+      || typeof entry.savedAt !== "string" || !Number.isFinite(Date.parse(entry.savedAt))) throw new Error("Invalid entry");
+    ids.add(entry.id);
+    if (entry.name !== undefined && (typeof entry.name !== "string"
+      || !entry.name.trim() || [...entry.name].length > 100)) throw new Error("Invalid name");
+    validateEstimate(entry.estimate);
+  }
+}
+
+// Read the full current history and commit only after validating the replacement.
+// Returning null from transform will also allow deletion of a single entry.
+function changeHistoryEntry(id, transform) {
+  const entries = readHistory();
+  const index = entries.findIndex((entry) => entry.id === id);
+  if (index === -1) throw new Error("Missing entry");
+  const replacement = transform(entries[index]);
+  if (replacement === null) entries.splice(index, 1);
+  else entries[index] = replacement;
+  validateHistoryEntries(entries);
+  localStorage.setItem(historyKey, JSON.stringify({ version: 1, entries }));
+  return entries;
+}
+
+function renameHistoryEstimate(id) {
+  try {
+    const entry = readHistory().find((candidate) => candidate.id === id);
+    if (!entry) throw new Error("Missing entry");
+    const answer = window.prompt("Название записи в истории (от 1 до 100 символов). Номер сметы и клиент не изменятся:",
+      entry.name || entry.estimate.fields["estimate-number"].trim() || "Без номера");
+    if (answer === null) return;
+    const name = answer.trim();
+    if (!name || [...name].length > 100) {
+      historyStatus.textContent = "Введите название от 1 до 100 символов. Одних пробелов недостаточно. Запись не изменена.";
+      return;
+    }
+    const entries = changeHistoryEntry(id, (current) => ({ ...current, name }));
+    renderHistory(entries, id);
+    historyStatus.textContent = "Название записи сохранено. Номер и содержимое сметы не изменены.";
+  } catch {
+    historyStatus.textContent = "Не удалось переименовать смету. Запись отсутствует, хранилище недоступно, заполнено или данные повреждены. Сохранённые данные не изменены.";
+  }
+}
+
+function renderHistory(entries, focusRenameId) {
   const query = historySearch.value.trim().toLocaleLowerCase("ru-RU");
   const matches = entries.filter(({ estimate: { fields } }) =>
     [fields["estimate-number"], fields.recipient].some((value) => value.toLocaleLowerCase("ru-RU").includes(query)));
   const fragment = document.createDocumentFragment();
+  let focusTarget;
   for (const entry of matches) {
     const fields = entry.estimate.fields;
     const item = document.createElement("li");
     item.className = "history-entry";
     const heading = document.createElement("h3");
-    heading.textContent = fields["estimate-number"].trim() || "Без номера";
+    const number = fields["estimate-number"].trim() || "Без номера";
+    heading.textContent = entry.name || number;
     const client = document.createElement("p");
     client.textContent = fields.recipient.trim() || "Клиент не указан";
     const dates = document.createElement("p");
@@ -446,10 +488,25 @@ function renderHistory(entries) {
     button.textContent = "Открыть";
     button.setAttribute("aria-label", `Открыть смету ${heading.textContent}, ${client.textContent}`);
     button.addEventListener("click", () => openHistoryEstimate(entry.id));
-    item.append(heading, client, dates, total, button);
+    item.append(heading, client, dates, total);
+    if (entry.name) {
+      const numberLabel = document.createElement("p");
+      numberLabel.textContent = `Номер сметы: ${number}`;
+      item.append(numberLabel);
+    }
+    item.append(button);
+    const rename = document.createElement("button");
+    rename.type = "button";
+    rename.className = "add-button history-rename";
+    rename.textContent = "Переименовать";
+    rename.setAttribute("aria-label", `Переименовать смету ${heading.textContent}, ${client.textContent}`);
+    rename.addEventListener("click", () => renameHistoryEstimate(entry.id));
+    item.append(rename);
+    if (entry.id === focusRenameId) focusTarget = rename;
     fragment.append(item);
   }
   historyList.replaceChildren(fragment);
+  if (focusRenameId !== undefined) (focusTarget || historySearch).focus();
   document.querySelector("#history-empty").hidden = entries.length > 0;
   historySearchStatus.textContent = entries.length > 0 && matches.length === 0
     ? "Ничего не найдено. Измените запрос" : "";

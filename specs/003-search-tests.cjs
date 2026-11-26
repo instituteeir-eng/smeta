@@ -71,6 +71,59 @@ test('Поиск: отсутствие фильтра в WhatsApp и изоля�
   const css = fs.readFileSync('styles.css','utf8'); assert.match(css,/@media print[\\s\\S]*\\.workspace, button, input, select, textarea \\{ display: none !important;/);
   const html = fs.readFileSync('index.html','utf8'); assert.match(html,/<label for="history-search">Поиск по номеру или клиенту<\\/label>/);
 });
+test('Переименование: отдельное название, тот же ID и дата, поиск и открытие', () => {
+  resetFixture(); search('алия'); fill(base); context.saveDraft();
+  const form = snapshot(), draft = data.get('draft'), before = entries();
+  context.window.prompt = () => '  Ремонт кухни  ';
+  context.renameHistoryEstimate('search-2');
+  const expected = structuredClone(before); expected[2].name = 'Ремонт кухни';
+  assert.deepEqual(entries(),expected); assert.deepEqual(snapshot(),form); assert.equal(data.get('draft'),draft);
+  assert.equal(el('#history-search').value,'алия'); assert.equal(visibleClients().length,2);
+  assert.equal(el('#history-list').children[1].children[0].textContent,'Ремонт кухни');
+  assert.equal(el('#history-list').children[1].children[4].textContent,'Номер сметы: СМ-001');
+  search('Ремонт кухни'); assert.equal(visibleClients().length,0);
+  search('см-001'); assert.equal(visibleClients().length,2);
+  open('search-2'); assert.deepEqual(snapshot(),fixture[2].estimate);
+  save(); assert.equal(entries()[0].name,undefined); assert.equal(entries()[3].name,'Ремонт кухни');
+});
+
+test('Переименование: отмена, пустой ввод, предел длины, буквальный HTML и дубли', () => {
+  resetFixture(); search('');
+  for (const answer of [null,'','   ','я'.repeat(101)]) {
+    const before = data.get(key); context.window.prompt = () => answer;
+    context.renameHistoryEstimate('search-0'); assert.equal(data.get(key),before);
+    if (answer !== null) assert.match(el('#history-status').textContent,/от 1 до 100/);
+  }
+  for (const answer of ['я'.repeat(100),'<Кухня> & монтаж','😀'.repeat(100)]) {
+    context.window.prompt = () => answer; context.renameHistoryEstimate('search-0');
+    assert.equal(entries()[0].name,answer); assert.equal(el('#history-list').children[0].children[0].textContent,answer);
+    assert.equal(el('#history-list').children[0].children[0].children.length,0);
+  }
+  context.renameHistoryEstimate('search-1'); assert.equal(entries()[0].name,entries()[1].name);
+  const fresh = vm.createContext({...context}); vm.runInContext(source.slice(source.indexOf('const historyKey =')),fresh);
+  assert.equal(el('#history-list').children[0].children[0].textContent,entries()[0].name);
+  el('#history-search').addEventListener('input',context.refreshHistorySearch);
+});
+
+test('Переименование: ошибки чтения/записи, повреждения и отсутствующий ID безопасны', () => {
+  resetFixture(); search(''); context.window.prompt = () => 'Новое название';
+  const original = data.get(key), form = snapshot(), draft = data.get('draft');
+  for (const mode of ['read','write','missing','broken','name']) {
+    data.set(key,original); failRead = mode === 'read'; failWrite = mode === 'write';
+    if (mode === 'broken') data.set(key,'{');
+    if (mode === 'name') { const invalid = JSON.parse(original); invalid.entries[0].name=12; data.set(key,JSON.stringify(invalid)); }
+    const before = data.get(key);
+    context.renameHistoryEstimate(mode === 'missing' ? 'missing-id' : 'search-0');
+    assert.equal(data.get(key),before); assert.deepEqual(snapshot(),form); assert.equal(data.get('draft'),draft);
+    assert.match(el('#history-status').textContent,/Не удалось переименовать/);
+    failRead = failWrite = false;
+  }
+  data.set(key,original);
+  context.window.prompt = () => { data.set(key,JSON.stringify({version:1,entries:fixture.slice(1)})); return 'Новое'; };
+  context.renameHistoryEstimate('search-0'); assert.equal(entries().length,3); assert.equal(entries()[0].name,undefined);
+  assert.match(el('#history-status').textContent,/Не удалось переименовать/);
+  resetFixture(); search('');
+});
 console.log(JSON.stringify({passed:results.length, tests:results, limitation:'Имитация DOM и localStorage. Реальная вёрстка, фокус, перезагрузка, PDF и буфер обмена требуют браузера.'},null,2));
 `;
 vm.runInNewContext(harness.slice(0, harness.lastIndexOf('console.log(JSON.stringify')) + tests, {require, console}, {filename:'search-suite.cjs'});
